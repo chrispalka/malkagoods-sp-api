@@ -1,0 +1,44 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-malkagoodsspapi2-dev-b133c-authRole",
+      "UnauthRoleArn": "arn:aws:iam::472863627602:role/amplify-malkagoodsspapi2-dev-b133c-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::472863627602:role/amplify-malkagoodsspapi2-dev-b133c-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-malkagoodsspapi2-dev-b133c-deployment",
+      "UnauthRoleName": "amplify-malkagoodsspapi2-dev-b133c-unauthRole",
+      "StackName": "amplify-malkagoodsspapi2-dev-b133c",
+      "StackId": "arn:aws:cloudformation:us-east-1:472863627602:stack/amplify-malkagoodsspapi2-dev-b133c/a4adac50-0817-11ef-8b9b-0affda308fff",
+      "AmplifyAppId": "dkv34ixq8n6rd"
+    }
+  },
+  "function": {
+    "malkagoodsspapi254135dbb": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2024-05-02T02:05:28.377Z",
+      "lastBuildType": "DEV",
+      "lastPackageTimeStamp": "2024-05-02T02:05:29.101Z",
+      "distZipFilename": "malkagoodsspapi254135dbb-735631797a7235557151-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-malkagoodsspapi2-dev-b133c-deployment",
+        "s3Key": "amplify-builds/malkagoodsspapi254135dbb-735631797a7235557151-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-malkagoodsspapi2-dev-b133c-deployment/amplify-cfn-templates/function/malkagoodsspapi254135dbb-cloudformation-template.json",
+        "logicalId": "functionmalkagoodsspapi254135dbb"
+      },
+      "lastPushTimeStamp": "2024-05-02T02:06:45.206Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::472863627602:role/malkagoodsspapi2LambdaRole646912bd-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:472863627602:function:malkagoodsspapi254135dbb-dev",
+        "Name": "malkagoodsspapi254135dbb-dev",
+        "LambdaExecutionRole": "malkagoodsspapi2LambdaRole646912bd-dev"
+      },
+      "lastPushDirHash": "bEOKKdPCVP7iCspkmWct2VCizBA=",
+      "lastDevBuildTimeStamp": "2024-05-02T02:18:38.046Z"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "function": {
+    "malkagoodsspapi254135dbb": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_malkagoodsspapi254135dbb_authUrl": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    },
+    "AMPLIFY_function_malkagoodsspapi254135dbb_baseUrl": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    },
+    "AMPLIFY_function_malkagoodsspapi254135dbb_clientId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    },
+    "AMPLIFY_function_malkagoodsspapi254135dbb_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    },
+    "AMPLIFY_function_malkagoodsspapi254135dbb_marketplaceId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    },
+    "AMPLIFY_function_malkagoodsspapi254135dbb_refreshToken": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    },
+    "AMPLIFY_function_malkagoodsspapi254135dbb_s3BucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    },
+    "AMPLIFY_function_malkagoodsspapi254135dbb_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "malkagoodsspapi254135dbb"
+        }
+      ]
+    }
+  }
+}

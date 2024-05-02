@@ -1,0 +1,29 @@
+{
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "authUrl",
+      "environmentVariableName": "AUTH_URL"
+    },
+    {
+      "cloudFormationParameterName": "baseUrl",
+      "environmentVariableName": "BASE_URL"
+    },
+    {
+      "cloudFormationParameterName": "clientId",
+      "environmentVariableName": "CLIENT_ID"
+    },
+    {
+      "cloudFormationParameterName": "marketplaceId",
+      "environmentVariableName": "MARKETPLACE_ID"
+    },
+    {
+      "cloudFormationParameterName": "refreshToken",
+      "environmentVariableName": "REFRESH_TOKEN"
+    },
+    {
+      "cloudFormationParameterName": "s3BucketName",
+      "environmentVariableName": "S3_BUCKET_NAME"
+    }
+  ]
+}

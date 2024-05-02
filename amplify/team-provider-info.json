@@ -1,0 +1,29 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-malkagoodsspapi2-dev-b133c-authRole",
+      "UnauthRoleArn": "arn:aws:iam::472863627602:role/amplify-malkagoodsspapi2-dev-b133c-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::472863627602:role/amplify-malkagoodsspapi2-dev-b133c-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-malkagoodsspapi2-dev-b133c-deployment",
+      "UnauthRoleName": "amplify-malkagoodsspapi2-dev-b133c-unauthRole",
+      "StackName": "amplify-malkagoodsspapi2-dev-b133c",
+      "StackId": "arn:aws:cloudformation:us-east-1:472863627602:stack/amplify-malkagoodsspapi2-dev-b133c/a4adac50-0817-11ef-8b9b-0affda308fff",
+      "AmplifyAppId": "dkv34ixq8n6rd"
+    },
+    "categories": {
+      "function": {
+        "malkagoodsspapi254135dbb": {
+          "deploymentBucketName": "amplify-malkagoodsspapi2-dev-b133c-deployment",
+          "s3Key": "amplify-builds/malkagoodsspapi254135dbb-4f784c30437675617766-build.zip",
+          "authUrl": "https://api.amazon.com/auth/o2/token",
+          "baseUrl": "https://sellingpartnerapi-na.amazon.com",
+          "clientId": "amzn1.application-oa2-client.caf5f5ef6efe40eba4fbf2eb762e03bf",
+          "marketplaceId": "ATVPDKIKX0DER",
+          "refreshToken": "Atzr|IwEBIKq2r4mIlnj7oa9eeoRDhZ2dfH8dMr7gJS_wZpiUuIcmyf_iGO6NCuecZkqbgTsrb8ClmRyYUW32OYFeWanVMLcRwqknl3ZZUJRceF70Ad1rJjz8j3c2LAepltVm39iWWgXmN8FO6DGu3G0PSV26w98kCkpMU8uB4Zo-fTQTQHmYB0vqw0iuYDfdbRAP6KaP3E5Cn0jaZ9mGKWhj3Ip2c_IAEFLghGh0a7OA8hEPcKk5nyqiPo46-y0TKcH3zxdQ_c3iuBKGYRJRrvzGcbrCXEKy6n-K-gpIbH_eD59j44-RBesy8UOqxvqSWjRj9AJxeohzAoDG69tRYR5-kzRr7ODA",
+          "s3BucketName": "malkagoods-products-json"
+        }
+      }
+    }
+  }
+}
