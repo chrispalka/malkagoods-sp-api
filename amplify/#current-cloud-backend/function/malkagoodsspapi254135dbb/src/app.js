@@ -65,6 +65,7 @@ app.use(function (req, res, next) {
 
 app.get('/getInventory', async function (req, res) {
   const secretValue = await getSecret();
+  console.log('****', secretValue);
   const spClientSecret = secretValue.SecretString
     ? JSON.parse(secretValue.SecretString)['SP_CLIENT_SECRET']
     : null;

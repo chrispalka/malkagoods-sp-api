@@ -15,7 +15,7 @@
       "function": {
         "malkagoodsspapi254135dbb": {
           "deploymentBucketName": "amplify-malkagoodsspapi2-dev-b133c-deployment",
-          "s3Key": "amplify-builds/malkagoodsspapi254135dbb-4f784c30437675617766-build.zip",
+          "s3Key": "amplify-builds/malkagoodsspapi254135dbb-735631797a7235557151-build.zip",
           "authUrl": "https://api.amazon.com/auth/o2/token",
           "baseUrl": "https://sellingpartnerapi-na.amazon.com",
           "clientId": "amzn1.application-oa2-client.caf5f5ef6efe40eba4fbf2eb762e03bf",

@@ -29,7 +29,7 @@
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-malkagoodsspapi2-dev-b133c-deployment/amplify-cfn-templates/function/malkagoodsspapi254135dbb-cloudformation-template.json",
         "logicalId": "functionmalkagoodsspapi254135dbb"
       },
-      "lastPushTimeStamp": "2024-05-02T02:22:12.300Z",
+      "lastPushTimeStamp": "2025-09-12T17:43:33.299Z",
       "output": {
         "LambdaExecutionRoleArn": "arn:aws:iam::472863627602:role/malkagoodsspapi2LambdaRole646912bd-dev",
         "Region": "us-east-1",
@@ -38,7 +38,7 @@
         "LambdaExecutionRole": "malkagoodsspapi2LambdaRole646912bd-dev"
       },
       "lastPushDirHash": "bEOKKdPCVP7iCspkmWct2VCizBA=",
-      "lastDevBuildTimeStamp": "2025-01-31T02:48:32.903Z"
+      "lastDevBuildTimeStamp": "2025-09-12T21:12:46.195Z"
     }
   }
 }
