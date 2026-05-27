@@ -29,8 +29,11 @@ const ACCESS_TOKEN_SAFETY_MARGIN_MS = 60 * 1000;
 const REPORT_POLL_INTERVAL_MS = 10_000;
 const REPORT_POLL_MAX_ATTEMPTS = 60;
 const ASIN_CHUNK_SIZE = 20;
-const CATALOG_CONCURRENCY = 2;
-const HTTP_MAX_RETRIES = 4;
+const CATALOG_CONCURRENCY = 1;
+const CATALOG_MIN_INTERVAL_MS = 600;
+const HTTP_MAX_RETRIES = 5;
+const SNAPSHOT_GUARD_MIN_RATIO = 0.5;
+const PRODUCTS_KEY = 'products';
 
 const HTTP_TIMEOUTS_MS = {
   auth: 10_000,
@@ -38,6 +41,15 @@ const HTTP_TIMEOUTS_MS = {
   reportDownload: 60_000,
   catalog: 30_000,
 };
+
+let nextCatalogSlotAt = 0;
+async function reserveCatalogSlot() {
+  const now = Date.now();
+  const slot = Math.max(now, nextCatalogSlotAt);
+  nextCatalogSlotAt = slot + CATALOG_MIN_INTERVAL_MS;
+  const wait = slot - now;
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+}
 
 function pLimit(concurrency) {
   let active = 0;
@@ -303,8 +315,9 @@ async function fetchCatalogItems(asinChunks, headers) {
   const limit = pLimit(CATALOG_CONCURRENCY);
   const responses = await Promise.all(
     asinChunks.map((asinChunk) =>
-      limit(() =>
-        requestWithRetry('catalog', () =>
+      limit(async () => {
+        await reserveCatalogSlot();
+        return requestWithRetry('catalog', () =>
           axios.get(`${process.env.BASE_URL}/catalog/2022-04-01/items`, {
             headers,
             timeout: HTTP_TIMEOUTS_MS.catalog,
@@ -316,8 +329,8 @@ async function fetchCatalogItems(asinChunks, headers) {
               includedData: 'summaries,images,attributes',
             },
           })
-        )
-      )
+        );
+      })
     )
   );
   return responses.flatMap((r) => r.data.items || []);
@@ -329,10 +342,60 @@ function mergePrices(items, prices) {
   }
 }
 
+async function getPriorItemCount() {
+  try {
+    const result = await S3.getObject({
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: PRODUCTS_KEY,
+    }).promise();
+    const parsed = JSON.parse(result.Body.toString('utf-8'));
+    return Array.isArray(parsed) ? parsed.length : null;
+  } catch (err) {
+    if (err.code === 'NoSuchKey' || err.statusCode === 404) return null;
+    console.warn(
+      `Could not read prior products file for snapshot guard: ${err.message}`
+    );
+    return null;
+  }
+}
+
+async function assertSnapshotSafe(newItems) {
+  if (newItems.length === 0) {
+    throw new Error(
+      'Refusing to overwrite products with empty array — upstream likely degraded'
+    );
+  }
+  if (process.env.SKIP_SNAPSHOT_GUARD === 'true') {
+    console.warn(
+      `SKIP_SNAPSHOT_GUARD=true — bypassing guard (new count: ${newItems.length})`
+    );
+    return;
+  }
+  const priorCount = await getPriorItemCount();
+  if (priorCount === null) {
+    console.log(
+      `Snapshot guard: no comparable prior data, writing ${newItems.length} items`
+    );
+    return;
+  }
+  const ratio = newItems.length / priorCount;
+  console.log(
+    `Snapshot guard: prior=${priorCount}, new=${newItems.length}, ratio=${ratio.toFixed(2)}`
+  );
+  if (ratio < SNAPSHOT_GUARD_MIN_RATIO) {
+    throw new Error(
+      `Refusing to overwrite products: count dropped from ${priorCount} to ${newItems.length} ` +
+        `(ratio ${ratio.toFixed(2)} < ${SNAPSHOT_GUARD_MIN_RATIO}). ` +
+        `Set SKIP_SNAPSHOT_GUARD=true env var to override.`
+    );
+  }
+}
+
 async function uploadToS3(items) {
+  await assertSnapshotSafe(items);
   await S3.putObject({
     Bucket: process.env.S3_BUCKET_NAME,
-    Key: 'products',
+    Key: PRODUCTS_KEY,
     Body: JSON.stringify(items),
     ContentType: 'application/json; charset=utf-8',
   }).promise();
