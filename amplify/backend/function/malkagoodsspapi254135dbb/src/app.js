@@ -29,32 +29,51 @@ const REPORT_POLL_INTERVAL_MS = 10_000;
 const REPORT_POLL_MAX_ATTEMPTS = 60;
 const ASIN_CHUNK_SIZE = 20;
 
+const HTTP_TIMEOUTS_MS = {
+  auth: 10_000,
+  reports: 10_000,
+  reportDownload: 60_000,
+  catalog: 30_000,
+};
+
 let cachedSecrets = null;
 let secretsExpiresAt = 0;
+let inflightSecretsPromise = null;
 let cachedAccessToken = null;
 let accessTokenExpiresAt = 0;
+let inflightTokenPromise = null;
 
 async function getSecrets() {
   const now = Date.now();
   if (cachedSecrets && now < secretsExpiresAt) return cachedSecrets;
+  if (inflightSecretsPromise) return inflightSecretsPromise;
 
-  const response = await secretsClient.send(
-    new GetSecretValueCommand({
-      SecretId: SECRET_NAME,
-      VersionStage: 'AWSCURRENT',
-    })
-  );
-  const parsed = response.SecretString ? JSON.parse(response.SecretString) : {};
+  inflightSecretsPromise = (async () => {
+    try {
+      const response = await secretsClient.send(
+        new GetSecretValueCommand({
+          SecretId: SECRET_NAME,
+          VersionStage: 'AWSCURRENT',
+        })
+      );
+      const parsed = response.SecretString
+        ? JSON.parse(response.SecretString)
+        : {};
 
-  // Env-var fallback lets the cutover to Secrets Manager happen without downtime:
-  // keep REFRESH_TOKEN/CLIENT_ID env vars populated until the secret is updated.
-  cachedSecrets = {
-    SP_CLIENT_SECRET: parsed.SP_CLIENT_SECRET,
-    REFRESH_TOKEN: parsed.REFRESH_TOKEN || process.env.REFRESH_TOKEN,
-    CLIENT_ID: parsed.CLIENT_ID || process.env.CLIENT_ID,
-  };
-  secretsExpiresAt = now + SECRETS_TTL_MS;
-  return cachedSecrets;
+      // Env-var fallback lets the cutover to Secrets Manager happen without downtime:
+      // keep REFRESH_TOKEN/CLIENT_ID env vars populated until the secret is updated.
+      cachedSecrets = {
+        SP_CLIENT_SECRET: parsed.SP_CLIENT_SECRET,
+        REFRESH_TOKEN: parsed.REFRESH_TOKEN || process.env.REFRESH_TOKEN,
+        CLIENT_ID: parsed.CLIENT_ID || process.env.CLIENT_ID,
+      };
+      secretsExpiresAt = Date.now() + SECRETS_TTL_MS;
+      return cachedSecrets;
+    } finally {
+      inflightSecretsPromise = null;
+    }
+  })();
+  return inflightSecretsPromise;
 }
 
 async function getAccessToken() {
@@ -65,19 +84,31 @@ async function getAccessToken() {
   ) {
     return cachedAccessToken;
   }
+  if (inflightTokenPromise) return inflightTokenPromise;
 
-  console.log('LWA cache miss — minting new access token');
-  const secrets = await getSecrets();
-  const { data } = await axios.post(process.env.AUTH_URL, {
-    grant_type: 'refresh_token',
-    refresh_token: secrets.REFRESH_TOKEN,
-    client_id: secrets.CLIENT_ID,
-    client_secret: secrets.SP_CLIENT_SECRET,
-  });
+  inflightTokenPromise = (async () => {
+    try {
+      console.log('LWA cache miss — minting new access token');
+      const secrets = await getSecrets();
+      const { data } = await axios.post(
+        process.env.AUTH_URL,
+        {
+          grant_type: 'refresh_token',
+          refresh_token: secrets.REFRESH_TOKEN,
+          client_id: secrets.CLIENT_ID,
+          client_secret: secrets.SP_CLIENT_SECRET,
+        },
+        { timeout: HTTP_TIMEOUTS_MS.auth }
+      );
 
-  cachedAccessToken = data.access_token;
-  accessTokenExpiresAt = now + data.expires_in * 1000;
-  return cachedAccessToken;
+      cachedAccessToken = data.access_token;
+      accessTokenExpiresAt = Date.now() + data.expires_in * 1000;
+      return cachedAccessToken;
+    } finally {
+      inflightTokenPromise = null;
+    }
+  })();
+  return inflightTokenPromise;
 }
 
 function buildHeaders(accessToken) {
@@ -104,7 +135,7 @@ async function createReport(headers) {
       reportType: 'GET_MERCHANT_LISTINGS_ALL_DATA',
       dataStartTime: '2024-04-10T20:11:24.000Z',
     },
-    { headers }
+    { headers, timeout: HTTP_TIMEOUTS_MS.reports }
   );
   return data.reportId;
 }
@@ -113,7 +144,7 @@ async function waitForReport(reportId, headers) {
   for (let attempt = 1; attempt <= REPORT_POLL_MAX_ATTEMPTS; attempt++) {
     const { data } = await axios.get(
       `${process.env.BASE_URL}/reports/2021-06-30/reports/${reportId}`,
-      { headers }
+      { headers, timeout: HTTP_TIMEOUTS_MS.reports }
     );
     const status = data.processingStatus;
     console.log(
@@ -137,18 +168,33 @@ async function waitForReport(reportId, headers) {
 async function getReportDocumentUrl(reportDocumentId, headers) {
   const { data } = await axios.get(
     `${process.env.BASE_URL}/reports/2021-06-30/documents/${reportDocumentId}`,
-    { headers }
+    { headers, timeout: HTTP_TIMEOUTS_MS.reports }
   );
   return data.url;
 }
 
 async function downloadAndParseReport(url) {
-  const { data } = await axios.get(url);
+  const { data } = await axios.get(url, {
+    timeout: HTTP_TIMEOUTS_MS.reportDownload,
+  });
   const rows = data.split('\n');
+  if (rows.length === 0) {
+    throw new Error('Inventory report is empty (no rows received)');
+  }
   const headerCols = rows.shift().split('\t');
-  const statusIdx = headerCols.indexOf('status');
-  const priceIdx = headerCols.indexOf('price');
-  const asinIdx = headerCols.indexOf('asin1');
+  const indices = {
+    status: headerCols.indexOf('status'),
+    price: headerCols.indexOf('price'),
+    asin1: headerCols.indexOf('asin1'),
+  };
+  const missing = Object.entries(indices)
+    .filter(([, idx]) => idx === -1)
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    throw new Error(
+      `Inventory report missing required column(s): ${missing.join(', ')}`
+    );
+  }
 
   const seen = new Set();
   const asins = [];
@@ -157,14 +203,17 @@ async function downloadAndParseReport(url) {
   for (const row of rows) {
     if (!row) continue;
     const cols = row.split('\t');
-    if (cols[statusIdx] !== 'Active') continue;
-    const asin = cols[asinIdx];
+    if (cols[indices.status] !== 'Active') continue;
+    const asin = cols[indices.asin1];
     if (!asin || seen.has(asin)) continue;
     seen.add(asin);
     asins.push(asin);
-    prices.set(asin, cols[priceIdx]);
+    prices.set(asin, cols[indices.price]);
   }
 
+  console.log(
+    `Parsed ${asins.length} active unique ASINs from ${rows.length} report rows`
+  );
   return { asinChunks: chunk(asins, ASIN_CHUNK_SIZE), prices };
 }
 
@@ -173,6 +222,7 @@ async function fetchCatalogItems(asinChunks, headers) {
     asinChunks.map((asinChunk) =>
       axios.get(`${process.env.BASE_URL}/catalog/2022-04-01/items`, {
         headers,
+        timeout: HTTP_TIMEOUTS_MS.catalog,
         params: {
           identifiers: asinChunk.join(','),
           identifiersType: 'ASIN',
