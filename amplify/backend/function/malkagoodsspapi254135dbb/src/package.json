@@ -5,7 +5,10 @@
   "main": "index.js",
   "license": "Apache-2.0",
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.567.0",
+    "aws-sdk": "^2.1611.0",
     "aws-serverless-express": "^3.3.5",
+    "axios": "^1.6.8",
     "body-parser": "^1.17.1",
     "express": "^4.15.2"
   },
