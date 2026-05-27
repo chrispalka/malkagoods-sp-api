@@ -29,8 +29,9 @@ const ACCESS_TOKEN_SAFETY_MARGIN_MS = 60 * 1000;
 const REPORT_POLL_INTERVAL_MS = 10_000;
 const REPORT_POLL_MAX_ATTEMPTS = 60;
 const ASIN_CHUNK_SIZE = 20;
-const CATALOG_CONCURRENCY = 2;
-const HTTP_MAX_RETRIES = 4;
+const CATALOG_CONCURRENCY = 1;
+const CATALOG_MIN_INTERVAL_MS = 600;
+const HTTP_MAX_RETRIES = 5;
 const SNAPSHOT_GUARD_MIN_RATIO = 0.5;
 const PRODUCTS_KEY = 'products';
 
@@ -40,6 +41,15 @@ const HTTP_TIMEOUTS_MS = {
   reportDownload: 60_000,
   catalog: 30_000,
 };
+
+let nextCatalogSlotAt = 0;
+async function reserveCatalogSlot() {
+  const now = Date.now();
+  const slot = Math.max(now, nextCatalogSlotAt);
+  nextCatalogSlotAt = slot + CATALOG_MIN_INTERVAL_MS;
+  const wait = slot - now;
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+}
 
 function pLimit(concurrency) {
   let active = 0;
@@ -305,8 +315,9 @@ async function fetchCatalogItems(asinChunks, headers) {
   const limit = pLimit(CATALOG_CONCURRENCY);
   const responses = await Promise.all(
     asinChunks.map((asinChunk) =>
-      limit(() =>
-        requestWithRetry('catalog', () =>
+      limit(async () => {
+        await reserveCatalogSlot();
+        return requestWithRetry('catalog', () =>
           axios.get(`${process.env.BASE_URL}/catalog/2022-04-01/items`, {
             headers,
             timeout: HTTP_TIMEOUTS_MS.catalog,
@@ -318,8 +329,8 @@ async function fetchCatalogItems(asinChunks, headers) {
               includedData: 'summaries,images,attributes',
             },
           })
-        )
-      )
+        );
+      })
     )
   );
   return responses.flatMap((r) => r.data.items || []);
