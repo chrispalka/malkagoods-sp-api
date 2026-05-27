@@ -29,6 +29,8 @@ const ACCESS_TOKEN_SAFETY_MARGIN_MS = 60 * 1000;
 const REPORT_POLL_INTERVAL_MS = 10_000;
 const REPORT_POLL_MAX_ATTEMPTS = 60;
 const ASIN_CHUNK_SIZE = 20;
+const CATALOG_CONCURRENCY = 2;
+const HTTP_MAX_RETRIES = 4;
 
 const HTTP_TIMEOUTS_MS = {
   auth: 10_000,
@@ -36,6 +38,63 @@ const HTTP_TIMEOUTS_MS = {
   reportDownload: 60_000,
   catalog: 30_000,
 };
+
+function pLimit(concurrency) {
+  let active = 0;
+  const queue = [];
+  const next = () => {
+    if (active >= concurrency || queue.length === 0) return;
+    active++;
+    const { fn, resolve, reject } = queue.shift();
+    fn()
+      .then(resolve, reject)
+      .finally(() => {
+        active--;
+        next();
+      });
+  };
+  return (fn) =>
+    new Promise((resolve, reject) => {
+      queue.push({ fn, resolve, reject });
+      next();
+    });
+}
+
+function parseRetryAfter(headerValue) {
+  if (!headerValue) return 0;
+  const asSeconds = Number(headerValue);
+  if (Number.isFinite(asSeconds)) return Math.max(0, asSeconds * 1000);
+  const asDateMs = Date.parse(headerValue);
+  if (Number.isFinite(asDateMs)) return Math.max(0, asDateMs - Date.now());
+  return 0;
+}
+
+async function requestWithRetry(label, requestFn) {
+  for (let attempt = 1; attempt <= HTTP_MAX_RETRIES; attempt++) {
+    try {
+      return await requestFn();
+    } catch (err) {
+      const status = err.response && err.response.status;
+      const isRetryable =
+        status === 429 || (status >= 500 && status < 600) || !err.response;
+      if (!isRetryable || attempt === HTTP_MAX_RETRIES) throw err;
+
+      const retryAfterMs = parseRetryAfter(
+        err.response && err.response.headers['retry-after']
+      );
+      const base = 500 * 2 ** (attempt - 1);
+      const jittered = base * (0.75 + Math.random() * 0.5);
+      const backoffMs = Math.max(retryAfterMs, jittered);
+      const safeBackoffMs = Number.isFinite(backoffMs) ? backoffMs : base;
+      console.warn(
+        `[${label}] attempt ${attempt} failed (status=${
+          status || 'no-response'
+        }), retrying in ${Math.round(safeBackoffMs)}ms`
+      );
+      await new Promise((r) => setTimeout(r, safeBackoffMs));
+    }
+  }
+}
 
 let cachedSecrets = null;
 let secretsExpiresAt = 0;
@@ -134,7 +193,6 @@ async function createReport(headers) {
     {
       marketplaceIds: [process.env.MARKETPLACE_ID],
       reportType: 'GET_MERCHANT_LISTINGS_ALL_DATA',
-      dataStartTime: '2024-04-10T20:11:24.000Z',
     },
     { headers, timeout: HTTP_TIMEOUTS_MS.reports }
   );
@@ -242,19 +300,24 @@ async function downloadAndParseReport({ url, compressionAlgorithm }) {
 }
 
 async function fetchCatalogItems(asinChunks, headers) {
+  const limit = pLimit(CATALOG_CONCURRENCY);
   const responses = await Promise.all(
     asinChunks.map((asinChunk) =>
-      axios.get(`${process.env.BASE_URL}/catalog/2022-04-01/items`, {
-        headers,
-        timeout: HTTP_TIMEOUTS_MS.catalog,
-        params: {
-          identifiers: asinChunk.join(','),
-          identifiersType: 'ASIN',
-          pageSize: ASIN_CHUNK_SIZE,
-          marketplaceIds: process.env.MARKETPLACE_ID,
-          includedData: 'summaries,images,attributes',
-        },
-      })
+      limit(() =>
+        requestWithRetry('catalog', () =>
+          axios.get(`${process.env.BASE_URL}/catalog/2022-04-01/items`, {
+            headers,
+            timeout: HTTP_TIMEOUTS_MS.catalog,
+            params: {
+              identifiers: asinChunk.join(','),
+              identifiersType: 'ASIN',
+              pageSize: ASIN_CHUNK_SIZE,
+              marketplaceIds: process.env.MARKETPLACE_ID,
+              includedData: 'summaries,images,attributes',
+            },
+          })
+        )
+      )
     )
   );
   return responses.flatMap((r) => r.data.items || []);
@@ -292,8 +355,9 @@ const app = express();
 app.use(bodyParser.json());
 app.use(awsServerlessExpressMiddleware.eventContext());
 
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 app.use(function (req, res, next) {
-  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.header('Access-Control-Allow-Headers', '*');
   next();
 });
