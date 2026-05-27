@@ -18,6 +18,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware');
 const axios = require('axios');
+const zlib = require('zlib');
 
 const S3 = new AWS.S3();
 const secretsClient = new SecretsManagerClient({ region: 'us-east-1' });
@@ -170,15 +171,30 @@ async function getReportDocumentUrl(reportDocumentId, headers) {
     `${process.env.BASE_URL}/reports/2021-06-30/documents/${reportDocumentId}`,
     { headers, timeout: HTTP_TIMEOUTS_MS.reports }
   );
-  return data.url;
+  console.log(
+    `Report document: compressionAlgorithm=${data.compressionAlgorithm || 'none'}`
+  );
+  return { url: data.url, compressionAlgorithm: data.compressionAlgorithm };
 }
 
-async function downloadAndParseReport(url) {
+async function downloadAndParseReport({ url, compressionAlgorithm }) {
+  const isGzip = compressionAlgorithm === 'GZIP';
   const { data } = await axios.get(url, {
     timeout: HTTP_TIMEOUTS_MS.reportDownload,
+    responseType: isGzip ? 'arraybuffer' : 'text',
+    // Axios auto-decompresses Content-Encoding: gzip but Amazon's pre-signed
+    // S3 URLs serve the body raw — we must decompress manually below.
+    decompress: false,
   });
-  const rows = data.split('\n');
-  if (rows.length === 0) {
+
+  let text = isGzip
+    ? zlib.gunzipSync(Buffer.from(data)).toString('utf-8')
+    : data;
+
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+  const rows = text.split(/\r?\n/);
+  if (rows.length === 0 || !rows[0]) {
     throw new Error('Inventory report is empty (no rows received)');
   }
   const headerCols = rows.shift().split('\t');
@@ -191,8 +207,16 @@ async function downloadAndParseReport(url) {
     .filter(([, idx]) => idx === -1)
     .map(([name]) => name);
   if (missing.length > 0) {
+    console.error('Available headers:', headerCols);
+    console.error(
+      'First 300 chars of report data:',
+      JSON.stringify(text.slice(0, 300))
+    );
     throw new Error(
-      `Inventory report missing required column(s): ${missing.join(', ')}`
+      `Inventory report missing required column(s): ${missing.join(', ')}. ` +
+        `Got headers: [${headerCols.slice(0, 12).join(', ')}${
+          headerCols.length > 12 ? ', ...' : ''
+        }]`
     );
   }
 
@@ -280,8 +304,8 @@ app.get('/getInventory', async (req, res) => {
     const headers = buildHeaders(accessToken);
     const reportId = await createReport(headers);
     const reportDocumentId = await waitForReport(reportId, headers);
-    const docUrl = await getReportDocumentUrl(reportDocumentId, headers);
-    const { asinChunks, prices } = await downloadAndParseReport(docUrl);
+    const document = await getReportDocumentUrl(reportDocumentId, headers);
+    const { asinChunks, prices } = await downloadAndParseReport(document);
     const items = await fetchCatalogItems(asinChunks, headers);
     mergePrices(items, prices);
     await uploadToS3(items);
