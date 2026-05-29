@@ -17,19 +17,19 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda",
-      "lastBuildTimeStamp": "2024-05-02T02:05:28.377Z",
-      "lastBuildType": "DEV",
-      "lastPackageTimeStamp": "2024-05-02T02:05:29.101Z",
-      "distZipFilename": "malkagoodsspapi254135dbb-735631797a7235557151-build.zip",
+      "lastBuildTimeStamp": "2026-05-29T13:35:01.376Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-05-29T13:35:04.946Z",
+      "distZipFilename": "malkagoodsspapi254135dbb-576939575a36656c3343-build.zip",
       "s3Bucket": {
         "deploymentBucketName": "amplify-malkagoodsspapi2-dev-b133c-deployment",
-        "s3Key": "amplify-builds/malkagoodsspapi254135dbb-735631797a7235557151-build.zip"
+        "s3Key": "amplify-builds/malkagoodsspapi254135dbb-576939575a36656c3343-build.zip"
       },
       "providerMetadata": {
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-malkagoodsspapi2-dev-b133c-deployment/amplify-cfn-templates/function/malkagoodsspapi254135dbb-cloudformation-template.json",
         "logicalId": "functionmalkagoodsspapi254135dbb"
       },
-      "lastPushTimeStamp": "2025-09-12T21:14:58.592Z",
+      "lastPushTimeStamp": "2026-05-29T13:36:21.332Z",
       "output": {
         "LambdaExecutionRoleArn": "arn:aws:iam::472863627602:role/malkagoodsspapi2LambdaRole646912bd-dev",
         "Region": "us-east-1",
@@ -37,7 +37,7 @@
         "Name": "malkagoodsspapi254135dbb-dev",
         "LambdaExecutionRole": "malkagoodsspapi2LambdaRole646912bd-dev"
       },
-      "lastPushDirHash": "bEOKKdPCVP7iCspkmWct2VCizBA=",
+      "lastPushDirHash": "9482WechxZhqVn8rgq9+KqBK49g=",
       "lastDevBuildTimeStamp": "2025-09-12T21:12:46.195Z"
     }
   }

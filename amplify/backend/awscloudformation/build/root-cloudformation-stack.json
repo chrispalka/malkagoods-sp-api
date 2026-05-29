@@ -110,6 +110,53 @@
       "UpdateReplacePolicy": "Retain",
       "DeletionPolicy": "Retain"
     },
+    "DeploymentBucketBlockHTTP": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "DeploymentBucketName"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "DeploymentBucketName"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "DeploymentBucketName"
+                      }
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
     "AuthRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -158,7 +205,7 @@
         "TemplateURL": "https://s3.amazonaws.com/amplify-malkagoodsspapi2-dev-b133c-deployment/amplify-cfn-templates/function/malkagoodsspapi254135dbb-cloudformation-template.json",
         "Parameters": {
           "deploymentBucketName": "amplify-malkagoodsspapi2-dev-b133c-deployment",
-          "s3Key": "amplify-builds/malkagoodsspapi254135dbb-735631797a7235557151-build.zip",
+          "s3Key": "amplify-builds/malkagoodsspapi254135dbb-576939575a36656c3343-build.zip",
           "authUrl": "https://api.amazon.com/auth/o2/token",
           "baseUrl": "https://sellingpartnerapi-na.amazon.com",
           "clientId": "amzn1.application-oa2-client.caf5f5ef6efe40eba4fbf2eb762e03bf",
